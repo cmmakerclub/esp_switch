@@ -2,7 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <stdio.h>
 #define THRESHOLD 1000
-
+#define DEBUG 1
 const char* ssid = "OpenWrt_NAT_500GP.101";
 const char* password = "activegateway";
 
@@ -180,9 +180,10 @@ void loop() {
 
         toggler = !toggler;
         buttonCounter = 0x00;
-        Serial.print("IN IN IN STATE = ");
-        Serial.println(toggler);      
-        digitalWrite(2, toggler);
+        #ifdef DEBUG
+          Serial.println(toggler);      
+          digitalWrite(2, toggler);
+        #endif
         int publish_counter = 0;
         while(!client.publish (clientNameCStr, (uint8_t*) p.c_str(), 1, true)){
           publish_counter++;
