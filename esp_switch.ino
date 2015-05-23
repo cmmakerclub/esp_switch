@@ -43,10 +43,15 @@ void callback(char* topic, byte* payload, unsigned int len) {
   
   char buff[5];
   memcpy(buff, payload, len+1);
+
   buff[len] = '\0';
-  Serial.print("C1 ");
-  Serial.print(len); Serial.println(" < len");
-  Serial.println(buff);
+
+  #ifdefine
+    Serial.print("C1 ");
+    Serial.print(len); Serial.println(" < len");
+    Serial.println(buff);
+  #endif
+
   if (strcmp(buff, "0") == 0) {
     Serial.println("OFF");
     digitalWrite(2, 0);
