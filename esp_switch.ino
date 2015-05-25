@@ -2,19 +2,22 @@
 #include <ESP8266WiFi.h>
 #include <stdio.h>
 #define THRESHOLD 1000
-#define DEBUG 1
+
 const char* ssid = "OpenWrt_NAT_500GP.101";
 const char* password = "activegateway";
 
-//char* topic = "esp8266-18:fe:34:fe:c3:20/data";
-char* server = "128.199.191.223";
+
+
+char* server = "128.199.104.122";
 String clientName;
+
 char* clientNameCStr;
 WiFiClient wifiClient;
 PubSubClient client(server, 1883, callback, wifiClient);
 
 
 unsigned long prevMillis = 0;
+unsigned long prevMillisPub = 0;
 
 unsigned int buttonCounter = 0x00;
 int buttonState = 0;
@@ -29,8 +32,6 @@ void dummyText() {
   }
 }
 
-
-
 void callback(char* topic, byte* payload, unsigned int len) {
   
   if (len > 4) { 
@@ -43,15 +44,10 @@ void callback(char* topic, byte* payload, unsigned int len) {
   
   char buff[5];
   memcpy(buff, payload, len+1);
-
   buff[len] = '\0';
-
-  #ifdefine
-    Serial.print("C1 ");
-    Serial.print(len); Serial.println(" < len");
-    Serial.println(buff);
-  #endif
-
+  Serial.print("C1 ");
+  Serial.print(len); Serial.println(" < len");
+  Serial.println(buff);
   if (strcmp(buff, "0") == 0) {
     Serial.println("OFF");
     digitalWrite(2, 0);
@@ -85,6 +81,13 @@ String macToStr(const uint8_t* mac)
   return result;
 }
 
+void genClientNameGlobal(){
+  clientName += "esp8266-";
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  clientName += macToStr(mac);
+}
+
 void setup() {
   int wifiWaiting = 0;
   Serial.begin(115200);
@@ -114,36 +117,27 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   // Generate client name based on MAC address and last 8 bits of microsecond counter
-  clientName;
-  clientName += "esp8266-";
-  uint8_t mac[6];
-  WiFi.macAddress(mac);
-  clientName += macToStr(mac);
-  
+
+  genClientNameGlobal();
+
   topicAlive = clientName +"/data";
   
-  if (client.connect((char*) clientName.c_str(), (char*) topicAlive.c_str(), 1, 1, "willMessage")) {
-    Serial.println("Connected to MQTT broker");
-    Serial.print("Topic is: ");
-    Serial.println((char*) topicAlive.c_str());
-    clientNameCStr = const_cast<char*>(clientName.c_str());
-    unsigned int isSubscribed = client.subscribe(clientNameCStr);
-    if (isSubscribed) {
-        dummyText();
-        Serial.print("subscribed to >>> ");
-        Serial.print(clientNameCStr);
-        Serial.println("<< ");       
-    }
-    else {
-     Serial.println("subscribed error");
-     abort();
-    }
+  while(!client.connect((char*) clientName.c_str())) {
+    Serial.println("Connecting...");
+    delay(100);
   }
-  else {
-    Serial.println("MQTT connect failed");
-    Serial.println("Will reset and try again...");
-    abort();
+  
+  Serial.println("MQTT Connected");
+  
+  while (!client.subscribe((char*) clientName.c_str())) {
+    Serial.println("WATING SUBSCRIBE...");
+    delay(500);
   }
+
+  Serial.println("SUBSCRIBED");
+
+
+  prevMillisPub = -20000;  
 }
 
 void loop() {
@@ -154,6 +148,7 @@ void loop() {
   payload += ",\"counter\":";
   payload += counter;
   payload += "}";
+
   client.loop();
     if (client.connected()) {
       buttonState = digitalRead(0);    
@@ -167,12 +162,15 @@ void loop() {
           buttonCounter++;
         }
         
-        if (client.publish((char*) topicAlive.c_str(), (char*) payload.c_str())) {
-          Serial.println("Publish ok");
+        if (millis() - prevMillisPub > 1000) {
+          prevMillisPub = millis();        
+          if (client.publish((char*) topicAlive.c_str(), (char*) payload.c_str())) {
+            Serial.println("Publish ok");
+          }
+          else {
+            Serial.println("Publish failed");
+          }
         }
-        else {
-          Serial.println("Publish failed");
-        }      
 
       }
       
@@ -185,15 +183,14 @@ void loop() {
 
         toggler = !toggler;
         buttonCounter = 0x00;
-        #ifdef DEBUG
-          Serial.println(toggler);      
-          digitalWrite(2, toggler);
-        #endif
+        Serial.print("IN IN IN STATE = ");
+        Serial.println(toggler);      
+        digitalWrite(2, toggler);
         int publish_counter = 0;
         while(!client.publish (clientNameCStr, (uint8_t*) p.c_str(), 1, true)){
           publish_counter++;
-          // 10 seconds
-          if (publish_counter > 15 * 100 * 10) {
+          // 15 seconds
+          if (publish_counter > 5 * 100 * 10) {
             abort();
           }
           delay(100);
