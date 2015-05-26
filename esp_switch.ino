@@ -92,6 +92,7 @@ void setup() {
   int wifiWaiting = 0;
   Serial.begin(115200);
   pinMode(2, OUTPUT);
+  digitalWrite(2, HIGH);
   pinMode(0, INPUT);
   delay(10);
   Serial.println();
