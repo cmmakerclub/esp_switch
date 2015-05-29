@@ -7,6 +7,7 @@ const char* ssid = "OpenWrt_NAT_500GP.101";
 const char* password = "activegateway";
 
 
+#define ON 1
 
 char* server = "128.199.104.122";
 String clientName;
@@ -180,13 +181,13 @@ void loop() {
       }
       
       if (buttonCounter >= 3) {
-        String p = String(toggler);
+        String p = String(!toggler);
 
         toggler = !toggler;
         buttonCounter = 0x00;
         Serial.print("IN IN IN STATE = ");
         Serial.println(toggler);      
-        digitalWrite(2, toggler);
+        digitalWrite(2, !toggler);
         int publish_counter = 0;
         while(!client.publish (clientNameCStr, (uint8_t*) p.c_str(), 1, true)){
           publish_counter++;
