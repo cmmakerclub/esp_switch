@@ -23,7 +23,7 @@
 #endif
 
 #define CLIENT_ID_PREFIX "esp8266-"
-#define DEVICE_NAME "NAT"
+#define DEVICE_NAME "TONG"
 
 
 #define STATE_WIFI_CONNECTING    0
@@ -53,6 +53,11 @@ char* clientTopic;
 
 unsigned long prevMillisPub = 0;
 
+
+boolean buttonState = 0;
+boolean lastState;
+boolean state = HIGH;
+
 // IPAddress server(128,199,104,122);
 
 // PubSubClient client("m20.cloudmqtt.com", 17380);
@@ -65,10 +70,14 @@ void callback(const MQTT::Publish& pub)
     if (pub.payload_string() == "0")
     {
         DEBUG_PRINTLN("GOT STRING 0...");
+        digitalWrite(2, LOW);
+        lastState = 1;
     }
     else if (pub.payload_string() == "1")
     {
         DEBUG_PRINTLN("GOT STRING 1..");
+        digitalWrite(2, HIGH);
+        lastState = 0;
     }
     else
     {
@@ -139,7 +148,6 @@ void visualNotify(uint8_t state)
     else if (state == STATE_MQTT_SUBSCRIBED)
     {
         DEBUG_PRINT("Subscribed... to ");
-        DEBUG_PRINTLN(clientTopic);
     }
     else if (state == STATE_READY_TO_GO)
     {
@@ -202,8 +210,6 @@ void connectMqtt()
         {
             break;
         }
-
-        DEBUG_PRINTLN(result);
         visualNotify(STATE_MQTT_CONNECTING);
         delay(500);
     }
@@ -288,7 +294,10 @@ void setup()
     pinMode(LED_PIN, OUTPUT);
 #endif
 
+
     delay(10);
+    pinMode(0, INPUT);
+    pinMode(2, OUTPUT);
 
     connectWifi();
     prepareClientIdAndClientTopic();
@@ -299,6 +308,23 @@ void setup()
     visualNotify(STATE_READY_TO_GO);
 }
 
+void sw()
+{
+    String stateString;
+    buttonState = digitalRead(0);
+    if ( ( buttonState == LOW) && (lastState == HIGH) )
+    {
+        state = !state;
+        stateString = state;
+        digitalWrite(2, state);
+        while(!client.publish(clientTopic, stateString))
+        {
+            DEBUG_PRINTLN("TRYING PUBLISH SWITHC... ");
+            delay(500);
+        }
+        DEBUG_PRINTLN("SWITCH PUBLISH OK.");
+    }
+}
 
 void loop()
 {
@@ -307,6 +333,7 @@ void loop()
     if (client.connected())
     {
         reconnectWifiIfLinkDown();
+        sw();
         fn_publisher();
     }
     else
