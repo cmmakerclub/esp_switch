@@ -23,7 +23,7 @@
 #endif
 
 #define CLIENT_ID_PREFIX "esp8266-"
-#define DEVICE_NAME "TONG"
+#define DEVICE_NAME "O_O"
 
 
 #define STATE_WIFI_CONNECTING    0
@@ -43,8 +43,8 @@
 
 #define LED_PIN 1 // <<<==== 1 = TX0 PIN 
 
-const char *ssid = "OpenWrt_NAT_500GP.101";
-const char *pass = "activegateway";
+const char *ssid = "MAKERCLUB-CM";
+const char *pass = "welcomegogogo";
 
 Ticker publisher;
 
@@ -71,13 +71,13 @@ void callback(const MQTT::Publish& pub)
     {
         DEBUG_PRINTLN("GOT STRING 0...");
         digitalWrite(2, LOW);
-        lastState = 1;
+        state = !state;
     }
     else if (pub.payload_string() == "1")
     {
         DEBUG_PRINTLN("GOT STRING 1..");
         digitalWrite(2, HIGH);
-        lastState = 0;
+        state = !state;
     }
     else
     {
@@ -312,18 +312,22 @@ void sw()
 {
     String stateString;
     buttonState = digitalRead(0);
-    if ( ( buttonState == LOW) && (lastState == HIGH) )
-    {
-        state = !state;
-        stateString = state;
-        digitalWrite(2, state);
+      while(buttonState==LOW){
+         buttonState = digitalRead(0);
+        if(buttonState==1){
+          
+         state=!state;
+        stateString =state;
+        digitalWrite(2,state);
         while(!client.publish(clientTopic, stateString))
         {
             DEBUG_PRINTLN("TRYING PUBLISH SWITHC... ");
             delay(500);
         }
         DEBUG_PRINTLN("SWITCH PUBLISH OK.");
-    }
+        }
+      }
+    
 }
 
 void loop()
